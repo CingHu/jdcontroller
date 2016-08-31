@@ -1,0 +1,57 @@
+package udp
+
+import (
+	"encoding/binary"
+	"errors"
+	_"fmt"
+)
+
+const (
+	DHCP     = 0x43
+)
+
+type UDP struct {
+	PortSrc  uint16
+	PortDst  uint16
+	Length   uint16
+	Checksum uint16
+	Data     []byte
+}
+
+func New() *UDP {
+	u := new(UDP)
+	u.Data = make([]byte, 0)
+	return u
+}
+
+func (u *UDP) Len() (l int) {
+	if u.Data != nil {
+		return 8 + len(u.Data)
+	}
+	return 8
+}
+
+func (u *UDP) PackBinary() (data []byte, err error) {
+	data = make([]byte, int(u.Len()))
+	binary.BigEndian.PutUint16(data[:2], u.PortSrc)
+	binary.BigEndian.PutUint16(data[2:4], u.PortDst)
+	binary.BigEndian.PutUint16(data[4:6], u.Length)
+	binary.BigEndian.PutUint16(data[6:8], u.Checksum)
+	copy(data[8:], u.Data)
+	return
+}
+
+func (u *UDP) UnpackBinary(data []byte) error {
+	if len(data) < 8 {
+		return errors.New("The []byte is too short to Unpack a full UDP message.")
+	}
+	u.PortSrc = binary.BigEndian.Uint16(data[:2])
+	u.PortDst = binary.BigEndian.Uint16(data[2:4])
+	u.Length = binary.BigEndian.Uint16(data[4:6])
+	u.Checksum = binary.BigEndian.Uint16(data[6:8])
+
+	for n, _ := range data[8:] {
+		u.Data = append(u.Data, data[n + 8])
+	}
+	return nil
+}
